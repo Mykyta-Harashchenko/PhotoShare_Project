@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..schemas import photos as photo_schemas
 from ..repository import photos as photo_crud
 from ..database import db
-from ..services.auth import get_current_user
+from ..services.auth import get_current_user # цю функцію потрібно зробити
 
 router = APIRouter()
 

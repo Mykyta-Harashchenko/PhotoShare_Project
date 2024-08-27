@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from ..entity import models
-from ..schemas import photos as schemas
+from ..schemas import photos as schemas 
 
 
 async def create_photo(db: AsyncSession, photo: schemas.PhotoCreate, user_id: int):
@@ -14,7 +14,7 @@ async def create_photo(db: AsyncSession, photo: schemas.PhotoCreate, user_id: in
     :return: Створена світлина (Post).
     """
     db_post = models.Post(
-        foto=photo.url,  # у твоєму випадку це поле 'foto'
+        foto=photo.url,  
         description=photo.description,
         owner_id=user_id
     )
