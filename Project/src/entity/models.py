@@ -36,6 +36,9 @@ class User(Base):
 
     about: Mapped[str] = mapped_column(Text, nullable=True)
 
+    posts: Mapped[list["Post"]] = relationship("Post", back_populates="owner")
+    comments: Mapped[list["Comment"]] = relationship("Comment", back_populates="user")
+
 
 class Tag(Base):
     __tablename__ = 'tags'
