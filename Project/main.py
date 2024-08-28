@@ -7,6 +7,7 @@ from fastapi_limiter.depends import RateLimiter
 
 from Project.src.database.db import get_db
 from Project.src.routes import comments
+from Project.src.routes import photos
 
 app = FastAPI(title="PhotoShare API", description="API для зберігання та поширення фото")
 
@@ -21,7 +22,7 @@ app.add_middleware(
 )
 
 app.include_router(comments.router, tags=["comments"])
-
+app.include_router(photos.router, tags=["photos"])
 
 @app.get("/", dependencies=[Depends(RateLimiter(times=2, seconds=5))])
 async def index():

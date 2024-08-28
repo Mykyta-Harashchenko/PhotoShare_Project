@@ -20,7 +20,7 @@ async def create_photo(db: AsyncSession, photo: schemas.PhotoCreate, user_id: in
     )
     db.add(db_post)
     await db.commit()
-    await db.refresh(db_post)
+    await db.refresh(db_post)        
     return db_post
 
 async def get_photo(db: AsyncSession, photo_id: int):
