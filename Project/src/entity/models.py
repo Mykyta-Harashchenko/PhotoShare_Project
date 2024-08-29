@@ -49,7 +49,8 @@ class Tag(Base):
 class Post(Base):
     __tablename__ = 'posts'
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    foto: Mapped[str] = mapped_column(String(255), nullable=True)
+    url: Mapped[str] = mapped_column(Text, nullable=True)
+    qr_code: Mapped[str] = mapped_column(Text, nullable=True)
     description: Mapped[str] = mapped_column(Text, nullable=True)
     created_at: Mapped[DateTime] = mapped_column(DateTime, default=func.now())
 
