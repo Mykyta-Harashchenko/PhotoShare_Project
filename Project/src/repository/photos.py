@@ -2,19 +2,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from ..entity import models
 from ..schemas import photos as schemas 
-
+import cloudinary.uploader
 
 async def create_photo(db: AsyncSession, photo: schemas.PhotoCreate, user_id: int):
     """
-    Функція для створення нової світлини (Post).
+    Функція для створення нової світлини (Post) з завантаженням на Cloudinary.
 
     :param db: Асинхронна сесія бази даних.
     :param photo: Схема PhotoCreate з даними про світлину.
     :param user_id: Ідентифікатор користувача, який завантажує світлину.
     :return: Створена світлина (Post).
     """
+    upload_result = cloudinary.uploader.upload(photo.url)
+    image_url = upload_result['secure_url']
+
     db_post = models.Post(
-        foto=photo.url,  
+        foto=image_url,  
         description=photo.description,
         owner_id=user_id
     )
@@ -49,26 +52,32 @@ async def get_photos_by_user(db: AsyncSession, user_id: int, skip: int = 0, limi
     )
     return result.scalars().all()
 
-async def update_photo(db: AsyncSession, photo_id: int, description: str):
+async def update_photo(db: AsyncSession, photo_id: int, description: str, url: str = None):
     """
-    Оновлює опис світлини (Post).
+    Оновлює опис світлини (Post) та, за потреби, її зображення.
 
     :param db: Асинхронна сесія бази даних.
     :param photo_id: Унікальний ідентифікатор світлини (Post).
     :param description: Новий опис світлини.
+    :param url: Новий URL зображення, який потрібно оновити (опціонально).
     :return: Оновлена світлина (Post).
     """
     result = await db.execute(select(models.Post).filter(models.Post.id == photo_id))
     db_post = result.scalar_one_or_none()
     if db_post:
         db_post.description = description
+
+        if url:
+            upload_result = cloudinary.uploader.upload(url)
+            db_post.foto = upload_result['secure_url']
+
         await db.commit()
         await db.refresh(db_post)
     return db_post
 
 async def delete_photo(db: AsyncSession, photo_id: int):
     """
-    Видаляє світлину (Post) з бази даних.
+    Видаляє світлину (Post) з бази даних та Cloudinary.
 
     :param db: Асинхронна сесія бази даних.
     :param photo_id: Унікальний ідентифікатор світлини (Post).
@@ -77,6 +86,9 @@ async def delete_photo(db: AsyncSession, photo_id: int):
     result = await db.execute(select(models.Post).filter(models.Post.id == photo_id))
     db_post = result.scalar_one_or_none()
     if db_post:
+        public_id = db_post.foto.split('/')[-1].split('.')[0]
+        cloudinary.uploader.destroy(public_id)
+        
         await db.delete(db_post)
         await db.commit()
     return db_post
