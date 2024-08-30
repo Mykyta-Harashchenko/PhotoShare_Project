@@ -20,13 +20,15 @@ class Settings(BaseSettings):
     REDIS_PORT: int = os.environ.get("REDIS_PORT")
     REDIS_PASSWORD: Optional[str] = os.environ.get("REDIS_PASSWORD")
     CLD_NAME: str = os.environ.get("CLD_NAME")
-    CLD_API_KEY: int = os.environ.get("CLD_API_KEY")
-    CLD_API_SECRET: str = os.environ.get("CLD_API_SECRET")
 
     class Config:
         env_file = "PhotoShare_Project/.env"
         env_file_encoding = "utf-8"
 
 
-config = Settings()
+class Settings(BaseSettings):
+    SECRET_KEY_JWT: str
+    ALGORITHM: str
+    DB_URL: str
 
+config = Settings()
