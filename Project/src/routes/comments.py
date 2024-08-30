@@ -7,7 +7,7 @@ from Project.src.database.db import get_db
 from Project.src.repository.comments import CommentRepository
 from Project.src.schemas.comments import CommentCreate, CommentUpdate, CommentResponse
 from Project.src.services.roles import RoleChecker
-from auth import get_current_user  # TODO:
+from Project.src.services.dependencies import get_current_user
 
 router = APIRouter()
 

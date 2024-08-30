@@ -1,12 +1,14 @@
 import contextlib
+import logging
 
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine, AsyncSession
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.declarative import declarative_base
+
 from Project.src.conf.config import config
 
 Base = declarative_base()
-
+logger = logging.getLogger(__name__)
 
 class DatabaseSessionManager:
     def __init__(self, url: str):
@@ -21,15 +23,13 @@ class DatabaseSessionManager:
             try:
                 yield session
             except Exception as err:
-                print(err)
+                logger.error(f"Database session error: {err}")
                 await session.rollback()
                 raise
             finally:
                 await session.close()
 
-
 sessionmanager = DatabaseSessionManager(config.DB_URL)
-
 
 async def get_db():
     async with sessionmanager.session() as session:

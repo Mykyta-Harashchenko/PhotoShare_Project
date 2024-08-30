@@ -5,7 +5,7 @@ from starlette import status
 
 from Project.src.database.db import get_db
 from Project.src.entity.models import User
-from Project.src.services.auth import auth_service  # TODO:
+from Project.src.services.dependencies import get_current_user
 
 from Project.src.schemas.roles import RoleEnum
 
@@ -47,7 +47,7 @@ class RoleChecker:
         :rtype: User
         :raises HTTPException: If the user's role is not allowed to access the endpoint.
         """
-        user = await auth_service.get_current_user(token, db)
+        user = await get_current_user(token, db)
         logger.info(f"User role: {user.role.name}, Allowed roles: {[role.name for role in self.allowed_roles]}")
         if user.role.name not in [role.name for role in self.allowed_roles]:
             logger.warning("Permission denied")
