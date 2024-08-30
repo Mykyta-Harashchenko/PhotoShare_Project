@@ -37,7 +37,7 @@ class User(Base):
     about: Mapped[str] = mapped_column(Text, nullable=True)
 
     posts: Mapped[list["Post"]] = relationship("Post", back_populates="owner")
-
+      
     comments: Mapped[list["Comment"]] = relationship("Comment", back_populates="user")
 
 
@@ -50,7 +50,8 @@ class Tag(Base):
 class Post(Base):
     __tablename__ = 'posts'
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    foto: Mapped[str] = mapped_column(String(255), nullable=True)
+    url: Mapped[str] = mapped_column(Text, nullable=True)
+    qr_code: Mapped[str] = mapped_column(Text, nullable=True)
     description: Mapped[str] = mapped_column(Text, nullable=True)
     created_at: Mapped[DateTime] = mapped_column(DateTime, default=func.now())
 
