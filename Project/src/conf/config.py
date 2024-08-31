@@ -1,4 +1,5 @@
 import os
+import cloudinary
 from typing import Optional
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
@@ -20,6 +21,10 @@ class Settings(BaseSettings):
     REDIS_PORT: Optional[int] = os.environ.get("REDIS_PORT")
     REDIS_PASSWORD: Optional[str] = os.environ.get("REDIS_PASSWORD")
     CLD_NAME: Optional[str] = os.environ.get("CLD_NAME")
+    CLD_API_KEY: str = os.environ.get("CLD_API_KEY")
+    CLD_API_SECRET: str = os.environ.get("CLD_API_SECRET")
+    CLD_URL: str = os.environ.get("CLD_URL")
+
 
     class Config:
         env_file = "PhotoShare_Project/.env"
