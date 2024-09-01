@@ -8,6 +8,7 @@ from Project.src.database.db import get_db
 from Project.src.entity.models import Base, User
 from Project.src.schemas.user import UserSignin, UserSignup
 from Project.src.routes.auth import router as auth_router
+from Project.src.routes import comments, photos
 from Project.src.services.auth_service import signin, signout, refresh_token, get_password_hash
 from fastapi_limiter.depends import RateLimiter
 from fastapi_limiter import FastAPILimiter
@@ -38,6 +39,7 @@ app.add_middleware(
 
 
 app.include_router(auth_router, prefix="/api")
+app.include_router(photos.router, tags=["photos"])
 
 
 @app.post("/signup", dependencies=[Depends(RateLimiter(times=2, seconds=5))])

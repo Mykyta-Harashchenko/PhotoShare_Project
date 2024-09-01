@@ -17,7 +17,6 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 SECRET_KEY = config.SECRET_KEY_JWT
 ALGORITHM = config.ALGORITHM
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
