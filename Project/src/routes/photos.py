@@ -1,6 +1,6 @@
 import os
 import qrcode
-from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 import cloudinary
 import cloudinary.uploader
@@ -24,9 +24,8 @@ cloudinary.config(
 
 @router.post("/upload/",
              dependencies=[Depends(RoleChecker([Role.user, Role.admin, Role.moderator]))])
-async def upload_file(description: str,
+async def upload_file(description: str = Form(...),
                       file: UploadFile = File(...),
-                      folder: str = None,
                       db: AsyncSession = Depends(get_db),
                       current_user: User = Depends(get_current_user)) -> dict:
     """
@@ -51,7 +50,7 @@ async def upload_file(description: str,
     :raises HTTPException: If there is an error during file upload or database operations, an HTTPException with status 500 is raised.
     """
     try:
-        result = cloudinary.uploader.upload(file.file, folder="api_upload")
+        result = cloudinary.uploader.upload(file.file, folder=current_user.email)
         secure_url = result["secure_url"]
 
         qr = qrcode.QRCode(
@@ -68,7 +67,7 @@ async def upload_file(description: str,
         qr_image.save(qr_buffer, format="PNG")
         qr_buffer.seek(0)
 
-        qr_result = cloudinary.uploader.upload(qr_buffer, folder="qr_api_upload")
+        qr_result = cloudinary.uploader.upload(qr_buffer, folder=current_user.email + "/qr_codes")
         qr_secure_url = qr_result["secure_url"]
 
         db_file = Post(url=secure_url,
