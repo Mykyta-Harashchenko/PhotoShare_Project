@@ -3,20 +3,29 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from sqlalchemy.future import select
-from jose import JWTError, jwt
-from datetime import timedelta, datetime
-
+from contextlib import asynccontextmanager
 from Project.src.database.db import get_db
 from Project.src.entity.models import Base, User
 from Project.src.schemas.user import UserSignin, UserSignup
 from Project.src.routes.auth import router as auth_router
+from Project.src.routes import comments, photos
 from Project.src.services.auth_service import signin, signout, refresh_token, get_password_hash
 from fastapi_limiter.depends import RateLimiter
+from fastapi_limiter import FastAPILimiter
+import redis.asyncio as redis
+from sqlalchemy import text
 
 from Project.src.conf.config import config
 from Project.src.services.dependencies import get_current_user
 
-app = FastAPI(title="PhotoShare API", description="API для зберігання та поширення фото")
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    redis_connection = redis.from_url("redis://localhost:6379", encoding="utf8")
+    await FastAPILimiter.init(redis_connection)
+    yield
+    await FastAPILimiter.close()
+
+app = FastAPI(lifespan=lifespan, title="PhotoShare API", description="API для зберігання та поширення фото")
 
 origins = ["*"]
 
@@ -30,9 +39,10 @@ app.add_middleware(
 
 
 app.include_router(auth_router, prefix="/api")
+app.include_router(photos.router, tags=["photos"])
 
 
-@app.post("/signup")
+@app.post("/signup", dependencies=[Depends(RateLimiter(times=2, seconds=5))])
 async def signup(user: UserSignup, db: AsyncSession = Depends(get_db)):
     existing_user = await db.execute(select(User).filter(User.email == user.email))
     if existing_user.scalar():
@@ -54,18 +64,18 @@ async def signup(user: UserSignup, db: AsyncSession = Depends(get_db)):
     return {"msg": "User created successfully", "user_id": new_user.id}
 
 
-@app.post("/signin")
+@app.post("/signin", dependencies=[Depends(RateLimiter(times=2, seconds=5))])
 async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
     user_signin = UserSignin(email=form_data.username, password=form_data.password)
     return await signin(user_signin, db)
 
 
-@app.post("/refresh")
+@app.post("/refresh", dependencies=[Depends(RateLimiter(times=2, seconds=5))])
 async def refresh(refresh_token: str, db: AsyncSession = Depends(get_db)):
     return await refresh_token(refresh_token, db)
 
 
-@app.post("/signout")
+@app.post("/signout", dependencies=[Depends(RateLimiter(times=2, seconds=5))])
 async def logout(current_user: User = Depends(get_db), db: AsyncSession = Depends(get_db)):
     return await signout(current_user, db)
 
@@ -75,7 +85,7 @@ async def index():
     return {"msg": "Hello World"}
 
 
-@app.get("/api/healthchecker")
+@app.get("/api/healthchecker", dependencies=[Depends(RateLimiter(times=2, seconds=5))])
 async def healthchecker(db: AsyncSession = Depends(get_db)):
     try:
         result = await db.execute(text("SELECT 1"))

@@ -31,5 +31,6 @@ class Settings(BaseSettings):
         env_file_encoding = "utf-8"
 
 
+
 # Initialize the settings
 config = Settings()
