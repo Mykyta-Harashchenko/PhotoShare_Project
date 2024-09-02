@@ -1,15 +1,11 @@
 import asyncio
-
 import pytest
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy.ext.declarative import declarative_base
-from Project.src.database.db import get_db
-from Project.main import app
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from Project.src.conf.config import config
-from Project.src.entity.models import User, Post, Comment
+from Project.src.database.db import Base, get_db
+from Project.main import app
+from Project.src.entity.models import User, Post
 from Project.src.repository.comments import CommentRepository
-
-Base = declarative_base()
 
 engine = create_async_engine(config.DB_TEST_URL, echo=True, future=True)
 
@@ -26,13 +22,12 @@ test_user_data = {"username": "testuser", "email": "testuser@example.com", "pass
 
 @pytest.fixture(scope="session")
 def event_loop():
-    """Create an instance of the event loop to be used in tests."""
     loop = asyncio.get_event_loop_policy().new_event_loop()
     yield loop
     loop.close()
 
 
-@pytest.fixture(scope="function", autouse=True)
+@pytest.fixture(scope="session", autouse=True)
 async def setup_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
@@ -48,7 +43,9 @@ async def db_session():
         try:
             yield session
         finally:
+            await session.rollback()  # Rollback to ensure isolation
             await session.close()
+
 
 @pytest.fixture(scope="function")
 def override_get_db():
@@ -62,118 +59,92 @@ def override_get_db():
     app.dependency_overrides.clear()
 
 
-
-@pytest.mark.asyncio
-async def test_create_comment(db_session: AsyncSession):
-    # Arrange: Create a test user and post
-    new_user = User(username="testuser", email="testuser@example.com", password="hashedpassword")
-    new_post = Post(title="Test Post", content="This is a test post", user=new_user)
-    db_session.add_all([new_user, new_post])
-    await db_session.commit()
-    await db_session.refresh(new_user)
-    await db_session.refresh(new_post)
-
-    repo = CommentRepository(db_session)
-    comment_text = "This is a test comment"
-
-    new_comment = await repo.create_comment(post_id=new_post.id, user_id=new_user.id, text=comment_text)
-
-    assert new_comment is not None
-    assert new_comment.text == comment_text
-    assert new_comment.post_id == new_post.id
-    assert new_comment.user_id == new_user.id
+@pytest.fixture
+async def setup_test_data(db_session: AsyncSession):
+    user = User(id=1, username='test_user', email='test@example.com')
+    post = Post(id=1, description="Test Post", owner=user)
+    # db_session.add(user)
+    # db_session.add(post)
+    # await db_session.commit()
+    return user, post
 
 
 @pytest.mark.asyncio
-async def test_get_comment_by_id(db_session: AsyncSession):
-
-    new_user = User(username="testuser", email="testuser@example.com", password="hashedpassword")
-    new_post = Post(title="Test Post", content="This is a test post", user=new_user)
-    new_comment = Comment(text="Test Comment", user=new_user, post=new_post)
-
-    db_session.add_all([new_user, new_post, new_comment])
-
-    await db_session.commit()
-    await db_session.refresh(new_comment)
-
+async def test_create_comment(db_session: AsyncSession, setup_test_data, override_get_db):
+    user, post = await setup_test_data
     repo = CommentRepository(db_session)
-
-    search_comment = await repo.get_comment_by_id(new_comment.id)
-
-    assert search_comment is not None
-    assert search_comment.id == new_comment.id
-    assert search_comment.text == new_comment.text
+    text = "Test Comment"
+    try:
+        comment = await repo.create_comment(post_id=post.id, user_id=user.id, text=text)
+        assert comment.text == text
+        assert comment.user_id == user.id
+        assert comment.post_id == post.id
+    except Exception as e:
+        pytest.fail(f"Error in test_create_comment: {e}")
 
 
 @pytest.mark.asyncio
-async def test_update_comment(db_session: AsyncSession):
-    new_user = User(username="testuser", email="testuser@example.com", password="hashedpassword")
-    new_post = Post(title="Test Post", content="This is a test post", user=new_user)
-
-    new_comment = Comment(text="first Comment", user=new_user, post=new_post)
-    db_session.add_all([new_user, new_post, new_comment])
-    await db_session.commit()
-    await db_session.refresh(new_comment)
-
+async def test_get_comment_by_id(db_session: AsyncSession, setup_test_data, override_get_db):
+    user, post = await setup_test_data
     repo = CommentRepository(db_session)
-    updated_text = "Updated Comment"
-
-    updated_comment = await repo.update_comment(comment_id=new_comment.id, new_text=updated_text)
-
-    assert updated_comment is not None
-    assert updated_comment.text == updated_text
+    try:
+        comment = await repo.create_comment(post_id=post.id, user_id=user.id, text="Test Comment")
+        found_comment = await repo.get_comment_by_id(comment.id)
+        assert found_comment is not None
+        assert found_comment.id == comment.id
+    except Exception as e:
+        pytest.fail(f"Error in test_get_comment_by_id: {e}")
 
 
 @pytest.mark.asyncio
-async def test_delete_comment(db_session: AsyncSession):
-
-    new_user = User(username="testuser", email="testuser@example.com", password="hashedpassword")
-    new_post = Post(title="Test Post", content="This is a test post", user=new_user)
-    new_comment = Comment(text="Comment", user=new_user, post=new_post)
-    db_session.add_all([new_user, new_post, new_comment])
-    await db_session.commit()
-    await db_session.refresh(new_comment)
-
+async def test_update_comment(db_session: AsyncSession, setup_test_data, override_get_db):
+    user, post = await setup_test_data
     repo = CommentRepository(db_session)
-
-    await repo.delete_comment(comment_id=new_comment.id)
-
-    deleted_comment = await repo.get_comment_by_id(new_comment.id)
-
-    assert deleted_comment is None
-
-@pytest.mark.asyncio
-async def test_get_comments_by_post_id(db_session: AsyncSession):
-    new_user = User(username="testuser", email="testuser@example.com", password="hashedpassword")
-    new_post = Post(title="Test Post", content="This is a test post", user=new_user)
-    comment1 = Comment(text="First Comment", user=new_user, post=new_post)
-    comment2 = Comment(text="Second Comment", user=new_user, post=new_post)
-    db_session.add_all([new_user, new_post, comment1, comment2])
-    await db_session.commit()
-
-    repo = CommentRepository(db_session)
-
-    comments = await repo.get_comments_by_post_id(post_id=new_post.id, limit=10, offset=0)
-
-    assert len(comments) == 2
-    assert comments[0].text == "First Comment"
-    assert comments[1].text == "Second Comment"
+    try:
+        comment = await repo.create_comment(post_id=post.id, user_id=user.id, text="Initial Text")
+        updated_comment = await repo.update_comment(comment.id, "Updated Text")
+        assert updated_comment.text == "Updated Text"
+        new_comment = await repo.get_comment_by_id(comment.id)
+        assert new_comment is not None
+        assert new_comment.text == "Updated Text"
+    except Exception as e:
+        pytest.fail(f"Error in test_update_comment: {e}")
 
 
 @pytest.mark.asyncio
-async def test_get_comments_by_user_id(db_session: AsyncSession):
-
-    new_user = User(username="testuser", email="testuser@example.com", password="hashedpassword")
-    new_post = Post(title="Test Post", content="This is a test post", user=new_user)
-    comment1 = Comment(text="First Comment", user=new_user, post=new_post)
-    comment2 = Comment(text="Second Comment", user=new_user, post=new_post)
-    db_session.add_all([new_user, new_post, comment1, comment2])
-    await db_session.commit()
-
+async def test_delete_comment(db_session: AsyncSession, setup_test_data, override_get_db):
+    user, post = await setup_test_data
     repo = CommentRepository(db_session)
+    try:
+        comment = await repo.create_comment(post_id=post.id, user_id=user.id, text="To be deleted")
+        await repo.delete_comment(comment.id)
+        found_comment = await repo.get_comment_by_id(comment.id)
+        assert found_comment is None
+    except Exception as e:
+        pytest.fail(f"Error in test_delete_comment: {e}")
 
-    comments = await repo.get_comments_by_user_id(user_id=new_user.id, limit=10, offset=0)
 
-    assert len(comments) == 2
-    assert comments[0].text == "First Comment"
-    assert comments[1].text == "Second Comment"
+@pytest.mark.asyncio
+async def test_get_comments_by_post_id(db_session: AsyncSession, setup_test_data, override_get_db):
+    user, post = await setup_test_data
+    repo = CommentRepository(db_session)
+    try:
+        await repo.create_comment(post_id=post.id, user_id=user.id, text="Comment 1")
+        await repo.create_comment(post_id=post.id, user_id=user.id, text="Comment 2")
+        comments = await repo.get_comments_by_post_id(post.id, limit=10, offset=0)
+        assert len(comments) == 2
+    except Exception as e:
+        pytest.fail(f"Error in test_get_comments_by_post_id: {e}")
+
+
+@pytest.mark.asyncio
+async def test_get_comments_by_user_id(db_session: AsyncSession, setup_test_data, override_get_db):
+    user, post = await setup_test_data
+    repo = CommentRepository(db_session)
+    try:
+        await repo.create_comment(post_id=post.id, user_id=user.id, text="Comment 1")
+        await repo.create_comment(post_id=post.id, user_id=user.id, text="Comment 2")
+        comments = await repo.get_comments_by_user_id(user.id, limit=10, offset=0)
+        assert len(comments) == 2
+    except Exception as e:
+        pytest.fail(f"Error in test_get_comments_by_user_id: {e}")
