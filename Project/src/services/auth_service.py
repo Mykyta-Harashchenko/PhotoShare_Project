@@ -1,12 +1,12 @@
-from passlib.context import CryptContext
-import jwt
+from typing import Optional
+from jose import jwt
 from datetime import datetime, timedelta
 from fastapi import HTTPException, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from Project.src.database.db import get_db
 from Project.src.services.dependencies import get_current_user
-from Project.src.schemas.user import UserSignin
+from Project.src.schemas.user import UserSignin, UserSignup
 from Project.src.entity.models import User, Role
 from Project.src.conf.config import config
 from passlib.context import CryptContext
@@ -19,20 +19,26 @@ ALGORITHM = config.ALGORITHM
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-def create_access_token(data: dict, expires_delta: timedelta | None = None):
+def create_access_token(data: dict, expires_delta: Optional[float] = None):
     to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta if expires_delta else timedelta(minutes=15))
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+    if expires_delta:
+        expire = datetime.utcnow() + timedelta(seconds=expires_delta)
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+    to_encode.update({"iat": datetime.utcnow(), "exp": expire, "scope": "access_token"})
+    encoded_access_token = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_access_token
 
 
-async def create_refresh_token(data: dict, expires_delta: timedelta = None):
+async def create_refresh_token(data: dict, expires_delta: Optional[float] = None):
     to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta or timedelta(days=7))
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+    if expires_delta:
+        expire = datetime.utcnow() + timedelta(seconds=expires_delta)
+    else:
+        expire = datetime.utcnow() + timedelta(days=7)
+    to_encode.update({"iat": datetime.utcnow(), "exp": expire, "scope": "refresh_token"})
+    encoded_refresh_token = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_refresh_token
 
 
 async def refresh_token(refresh_token: str, db: AsyncSession = Depends(get_db)):
@@ -63,6 +69,25 @@ async def authenticate_user(db: AsyncSession, email: str, password: str):
         return False
     return user
 
+async def signup(user: UserSignup, db: AsyncSession = Depends(get_db)):
+    existing_user = await db.execute(select(User).filter(User.email == user.email))
+    if existing_user.scalar():
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    hashed_password = get_password_hash(user.password)
+    new_user = User(
+        email=user.email,
+        username=user.username,
+        hashed_password=hashed_password,
+        first_name=user.first_name,
+        last_name=user.last_name,
+        role="admin" if (await db.execute(select(User))).scalar() is None else "user"
+    )
+
+    db.add(new_user)
+    await db.commit()
+    await db.refresh(new_user)
+    return {"msg": "User created successfully", "user_id": new_user.id}
 
 async def signin(user: UserSignin, db: AsyncSession = Depends(get_db)):
     user = await authenticate_user(db, user.email, user.password)
