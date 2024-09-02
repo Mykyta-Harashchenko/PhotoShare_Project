@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel
 
 
@@ -12,8 +14,8 @@ class CommentUpdate(BaseModel):
 class CommentResponse(BaseModel):
     id: int
     text: str
-    created_at: str
-    updated_at: str
+    created_at: datetime
+    updated_at: datetime
     user_id: int
     post_id: int
 
