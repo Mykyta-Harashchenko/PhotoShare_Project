@@ -87,7 +87,7 @@ async def get_comments_by_post(
     if not db_post:
         raise HTTPException(status_code=404, detail="Post not found")
 
-    comments = await CommentRepository(db).get_comments_by_post(post_id, limit, offset)
+    comments = await CommentRepository(db).get_comments_by_post_id(post_id, limit, offset)
     return comments
 
 
@@ -105,5 +105,5 @@ async def get_comments_by_user(
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    comments = await CommentRepository(db).get_comments_by_user(user_id, limit, offset)
+    comments = await CommentRepository(db).get_comments_by_user_id(user_id, limit, offset)
     return comments

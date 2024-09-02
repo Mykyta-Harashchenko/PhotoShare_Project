@@ -89,6 +89,26 @@ async def signup(user: UserSignup, db: AsyncSession = Depends(get_db)):
     await db.refresh(new_user)
     return {"msg": "User created successfully", "user_id": new_user.id}
 
+async def signup(user: UserSignup, db: AsyncSession = Depends(get_db)):
+    existing_user = await db.execute(select(User).filter(User.email == user.email))
+    if existing_user.scalar():
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    hashed_password = get_password_hash(user.password)
+    new_user = User(
+        email=user.email,
+        username=user.username,
+        hashed_password=hashed_password,
+        first_name=user.first_name,
+        last_name=user.last_name,
+        role="admin" if (await db.execute(select(User))).scalar() is None else "user"
+    )
+
+    db.add(new_user)
+    await db.commit()
+    await db.refresh(new_user)
+    return {"msg": "User created successfully", "user_id": new_user.id}
+
 async def signin(user: UserSignin, db: AsyncSession = Depends(get_db)):
     user = await authenticate_user(db, user.email, user.password)
     if not user:

@@ -1,5 +1,7 @@
 import os
+
 import qrcode
+
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 import cloudinary
@@ -7,6 +9,7 @@ import cloudinary.uploader
 import cloudinary.api
 import io
 from sqlalchemy import select
+from typing import Optional, List
 
 from Project.src.entity.models import Post, Role, User, Tag
 from Project.src.database.db import get_db
@@ -25,25 +28,22 @@ cloudinary.config(
 
 @router.post("/upload/",
              dependencies=[Depends(RoleChecker([Role.user, Role.admin, Role.moderator]))],
-             response_model=PostCreate,)
+             response_model=PostCreate)
 async def upload_file(description: str,
                       file: UploadFile = File(...),
-                      tags: list[str] = Query(...),
+                      tags: Optional[List[str]] = Query([]),
                       db: AsyncSession = Depends(get_db),
                       current_user: User = Depends(get_current_user)) -> dict:
     """
     Uploads a file to Cloudinary and generates a QR code for the uploaded file's URL.
-
-    This endpoint allows users with specific roles (user, admin, moderator) to upload a file to Cloudinary.
-    After uploading the file, a QR code is generated for the file's URL and also uploaded to Cloudinary.
-    The URLs of both the original file and the QR code are saved in the database.
+    Also adds tags to the uploaded file.
 
     :param description: A description for the uploaded file.
     :type description: str
     :param file: The file to be uploaded.
     :type file: UploadFile
-    :param folder: The folder in Cloudinary where the file will be uploaded.
-    :type folder: str, optional
+    :param tags: List of tags for the uploaded file (optional).
+    :type tags: List[str]
     :param db: The database session to use for database operations.
     :type db: AsyncSession
     :param current_user: The current user making the request.
@@ -52,10 +52,15 @@ async def upload_file(description: str,
     :rtype: dict
     :raises HTTPException: If there is an error during file upload or database operations, an HTTPException with status 500 is raised.
     """
+    if len(tags) > 5:
+        raise HTTPException(status_code=400, detail="You can only add up to 5 tags.")
+
     try:
+        # Upload file to Cloudinary
         result = cloudinary.uploader.upload(file.file, folder=current_user.email)
         secure_url = result["secure_url"]
 
+        # Generate QR code for the uploaded file
         qr = qrcode.QRCode(
             version=1,
             error_correction=qrcode.constants.ERROR_CORRECT_L,
@@ -64,7 +69,6 @@ async def upload_file(description: str,
         )
         qr.add_data(secure_url)
         qr.make(fit=True)
-
         qr_image = qr.make_image(fill_color="black", back_color="white").convert('RGB')
         qr_buffer = io.BytesIO()
         qr_image.save(qr_buffer, format="PNG")
@@ -73,30 +77,30 @@ async def upload_file(description: str,
         qr_result = cloudinary.uploader.upload(qr_buffer, folder=current_user.email + "/qr_codes")
         qr_secure_url = qr_result["secure_url"]
 
+        # Create a new Post record
         db_file = Post(url=secure_url,
                        description=description,
                        qr_code=qr_secure_url,
                        owner_id=current_user.id)
 
-        db.add(db_file)
-
+        # Process tags
         for tag_name in tags:
-            existing_tag = await db.execute(select(Tag).where(Tag.name == tag_name))
-            tag = existing_tag.scalar_one_or_none()
-            if not tag:
-                tag = Tag(name=tag_name)
-                db.add(tag)
+            tag = await db.execute(select(Tag).where(Tag.tag == tag_name))
+            existing_tag = tag.scalar_one_or_none()
+            if not existing_tag:
+                existing_tag = Tag(tag=tag_name)
+                db.add(existing_tag)
                 await db.commit()
-                await db.refresh(tag)
-            db_file.tags.append(tag)
+                await db.refresh(existing_tag)
+            db_file.tags.append(existing_tag)
 
+        db.add(db_file)
         await db.commit()
         await db.refresh(db_file)
 
         return {"url": secure_url, "qr_url": qr_secure_url}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 @router.get("/get_qr_code/{post_id}")
 async def get_qr_code(post_id: int, db: AsyncSession = Depends(get_db)) -> dict:
