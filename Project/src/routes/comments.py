@@ -9,7 +9,7 @@ from Project.src.schemas.comments import CommentCreate, CommentUpdate, CommentRe
 from Project.src.services.roles import RoleChecker
 from Project.src.services.dependencies import get_current_user
 
-router = APIRouter()
+router = APIRouter(tags=['comments'])
 
 
 @router.post(

@@ -12,7 +12,7 @@ from Project.src.services.auth_service import get_password_hash, verify_password
 from Project.src.entity.models import User, Role
 from Project.src.services.dependencies import get_current_user
 
-router = APIRouter()
+router = APIRouter(tags=['auth'])
 
 
 @router.post("/signup", response_model=UserResponse)

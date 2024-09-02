@@ -8,13 +8,14 @@ import cloudinary.api
 import io
 from sqlalchemy import select
 
-from Project.src.entity.models import Post, Role, User
+from Project.src.entity.models import Post, Role, User, Tag
 from Project.src.database.db import get_db
+from Project.src.schemas.photos import PostCreate
 from Project.src.services.roles import RoleChecker
 from Project.src.services.dependencies import get_current_user
 
 
-router = APIRouter()
+router = APIRouter(tags=['photos'])
 
 cloudinary.config(
     cloud_name=os.environ.get("CLD_NAME"),
@@ -23,9 +24,11 @@ cloudinary.config(
 )
 
 @router.post("/upload/",
-             dependencies=[Depends(RoleChecker([Role.user, Role.admin, Role.moderator]))])
+             dependencies=[Depends(RoleChecker([Role.user, Role.admin, Role.moderator]))],
+             response_model=PostCreate,)
 async def upload_file(description: str,
                       file: UploadFile = File(...),
+                      tags: list[str] = Query(...),
                       db: AsyncSession = Depends(get_db),
                       current_user: User = Depends(get_current_user)) -> dict:
     """
@@ -76,6 +79,17 @@ async def upload_file(description: str,
                        owner_id=current_user.id)
 
         db.add(db_file)
+
+        for tag_name in tags:
+            existing_tag = await db.execute(select(Tag).where(Tag.name == tag_name))
+            tag = existing_tag.scalar_one_or_none()
+            if not tag:
+                tag = Tag(name=tag_name)
+                db.add(tag)
+                await db.commit()
+                await db.refresh(tag)
+            db_file.tags.append(tag)
+
         await db.commit()
         await db.refresh(db_file)
 

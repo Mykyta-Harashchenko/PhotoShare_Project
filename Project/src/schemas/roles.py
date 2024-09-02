@@ -3,9 +3,9 @@ from enum import Enum
 
 
 class RoleEnum(str, Enum):
-    USER = "User"
-    ADMIN = "Admin"
-    MODERATOR = "Moderator"
+    user = "User"
+    admin = "Admin"
+    moderator = "Moderator"
 
 
 class RoleBase(BaseModel):

@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     CLD_NAME: Optional[str] = os.environ.get("CLD_NAME")
     CLD_API_KEY: str = os.environ.get("CLD_API_KEY")
     CLD_API_SECRET: str = os.environ.get("CLD_API_SECRET")
-    CLD_URL: str = os.environ.get("CLD_URL")
+
 
 
     class Config:

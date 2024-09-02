@@ -1,12 +1,17 @@
 # import asyncio
-#
 # import pytest
-# import pytest_asyncio
-# from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+# from unittest.mock import patch, MagicMock
+# from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+# from pydantic_settings import BaseSettings
 #
-# from Project.src.conf.config import config
+# from Project.src.database.db import DatabaseSessionManager, get_db, Base
 # from Project.main import app
-# from Project.src.database.db import get_db, Base
+# from Project.src.entity.models import Role, User
+# from Project.src.schemas import user
+# from Project.src.schemas.roles import RoleEnum
+# from Project.src.conf.config import config
+#
+#
 #
 # engine = create_async_engine(config.DB_TEST_URL, echo=True, future=True)
 #
@@ -23,7 +28,6 @@
 #
 # @pytest.fixture(scope="session")
 # def event_loop():
-#     """Create an instance of the event loop to be used in tests."""
 #     loop = asyncio.get_event_loop_policy().new_event_loop()
 #     yield loop
 #     loop.close()
@@ -58,39 +62,9 @@
 #
 #     yield
 #     app.dependency_overrides.clear()
-
 #
-# import pytest
-# from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-# from Project.src.database.db import Base
-# from Project.src.conf.config import config
 #
-# # Налаштування асинхронного двигуна SQLAlchemy
-# engine = create_async_engine(config.DB_TEST_URL, echo=True, future=True)
-#
-# SessionLocal = async_sessionmaker(
-#     bind=engine,
-#     class_=AsyncSession,
-#     autocommit=False,
-#     expire_on_commit=False,
-#     autoflush=False,
-# )
-#
-# # Фікстура для налаштування бази даних
-# @pytest.fixture(scope="session")
-# async def setup_db():
-#     async with engine.begin() as conn:
-#         await conn.run_sync(Base.metadata.drop_all)
-#         await conn.run_sync(Base.metadata.create_all)
-#     yield
-#     async with engine.begin() as conn:
-#         await conn.run_sync(Base.metadata.drop_all)
-#
-# # Фікстура для сесії бази даних
-# @pytest.fixture(scope="function")
-# async def db_session():
-#     async with SessionLocal() as session:
-#         try:
-#             yield session
-#         finally:
-#             await session.close()
+# @pytest.mark.asyncio
+# async def test_db_session(db_session):
+#     assert isinstance(db_session, AsyncSession)
+#     assert db_session.is_active
