@@ -68,6 +68,7 @@ async def authenticate_user(db: AsyncSession, email: str, password: str):
         return False
     return user
 
+
 async def signup(user: UserSignup, db: AsyncSession = Depends(get_db)):
     existing_user = await db.execute(select(User).filter(User.email == user.email))
     if existing_user.scalar():
