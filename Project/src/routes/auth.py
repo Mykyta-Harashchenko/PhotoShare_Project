@@ -6,54 +6,26 @@ from datetime import timedelta
 from sqlalchemy.future import select
 
 from Project.src.database.db import get_db
-from Project.src.schemas.user import UserCreate, UserResponse, Token, UserUpdate
+from Project.src.schemas.user import UserCreate, UserResponse, Token, UserUpdate, UserSignin, UserSignup
 from Project.src.services.auth_service import get_password_hash, verify_password, create_access_token, admin_required, \
-    moderate_required
+    moderate_required, signout, signin, signup
 from Project.src.entity.models import User, Role
 from Project.src.services.dependencies import get_current_user
 
 router = APIRouter(tags=['auth'])
 
+@router.post("/signup")
+async def register(user: UserSignup, db: AsyncSession = Depends(get_db)):
+    return await signup(user, db)
 
-@router.post("/signup", response_model=UserResponse)
-async def signup(user: UserCreate, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).filter((User.email == user.email) | (User.username == user.username)))
-    existing_user = result.scalars().first()
+@router.post("/signin")
+async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
+    user_signin = UserSignin(email=form_data.username, password=form_data.password)
+    return await signin(user_signin, db)
 
-    if existing_user:
-        raise HTTPException(status_code=400, detail="Email or username already registered")
-
-    result = await db.execute(select(User))
-    user_count = len(result.scalars().all())
-
-    role = Role.admin if user_count == 0 else Role.user
-
-    hashed_password = get_password_hash(user.password)
-    user_model = User(
-        username=user.username,
-        email=user.email,
-        hashed_password=hashed_password,
-        first_name=user.first_name,
-        last_name=user.last_name,
-        role=role
-    )
-    db.add(user_model)
-    await db.commit()
-    await db.refresh(user_model)
-
-    return user_model
-
-
-@router.post("/signin", response_model=Token)
-async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == form_data.username).first()
-    if not user or not verify_password(form_data.password, user.hashed_password):
-        raise HTTPException(status_code=401, detail="Incorrect username or password")
-
-    access_token = create_access_token(data={"sub": user.email})
-    refresh_token = create_access_token(data={"sub": user.email}, expires_delta=timedelta(days=7))
-
-    return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
+@router.post("/signout")
+async def logout(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return await signout(current_user, db)
 
 
 @router.patch("/users/{user_id}/promote", response_model=UserResponse)
@@ -71,6 +43,9 @@ async def promote_to_moderator(user_id: int, db: AsyncSession = Depends(get_db),
 
     return user
 
+@router.get("/users/me")
+async def read_users_me(current_user: User = Depends(get_current_user)):
+    return current_user
 
 @router.get("/users/info", response_model=dict)
 async def get_user_info(user_id: int = None, email: str = None, username: str = None,
