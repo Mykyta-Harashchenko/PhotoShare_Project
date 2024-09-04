@@ -2,7 +2,7 @@ import os
 
 import qrcode
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 import cloudinary
 import cloudinary.uploader
@@ -11,9 +11,12 @@ import io
 from sqlalchemy import select
 from typing import Optional, List
 
+from sqlalchemy.orm import joinedload, selectinload
+
 from Project.src.entity.models import Post, Role, User, Tag
 from Project.src.database.db import get_db
-from Project.src.schemas.photos import PostCreate
+from Project.src.schemas.comments import CommentResponse
+from Project.src.schemas.photos import PostCreate, PostResponseSchema
 from Project.src.services.roles import RoleChecker
 from Project.src.services.dependencies import get_current_user
 
@@ -104,6 +107,103 @@ async def upload_file(description: str,
                 "description": db_file.description,
                  "owner_id": db_file.owner_id
                 }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/post/{post_id}", response_model=PostResponseSchema)
+async def get_post(post_id: int, db: AsyncSession = Depends(get_db)) -> PostResponseSchema:
+    try:
+        query = select(Post).options(joinedload(Post.tags), joinedload(Post.comments)).where(Post.id == post_id)
+        result = await db.execute(query)
+        post = result.unique().scalar_one_or_none()
+
+        if post is None:
+            raise HTTPException(status_code=404, detail="Post not found")
+
+        post_data = PostResponseSchema(
+            id=post.id,
+            file_url=post.url,
+            description=post.description,
+            tags=[tag.name for tag in post.tags],
+            comments=[
+                CommentResponse(
+                    id=comment.id,
+                    text=comment.text,
+                    created_at=comment.created_at.isoformat(),
+                    updated_at=comment.updated_at.isoformat(),
+                    user_id=comment.user_id,
+                    post_id=comment.post_id
+                ) for comment in post.comments
+            ]
+        )
+        return post_data
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.patch("/update_description/{post_id}", response_model=PostCreate)
+async def update_description(
+        post_id: int,
+        new_description: str,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_user)
+):
+    try:
+
+        query = select(Post).where(Post.id == post_id).options(selectinload(Post.tags))
+        result = await db.execute(query)
+        post = result.scalar_one_or_none()
+
+        if post is None:
+            raise HTTPException(status_code=404, detail="Post not found")
+
+        if post.owner_id != current_user.id and current_user.role not in [Role.admin, Role.moderator]:
+            raise HTTPException(status_code=403, detail="You do not have permission to update this post")
+
+        post.description = new_description
+        await db.commit()
+        await db.refresh(post)
+
+        return PostCreate(
+            url=post.url,
+            description=post.description,
+            tags=[tag.name for tag in post.tags],
+            qr_code=post.qr_code,
+            owner_id=post.owner_id
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/delete_picture/{post_id}")
+async def delete_picture(
+        post_id: int,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_user)
+):
+    try:
+        query = select(Post).where(Post.id == post_id)
+        result = await db.execute(query)
+        post = result.scalar_one_or_none()
+
+        if post is None:
+            raise HTTPException(status_code=404, detail="Post not found")
+
+        if post.owner_id != current_user.id and current_user.role != Role.admin: raise HTTPException(status_code=403,
+                                                                                                     detail="Not authorized to delete this picture")
+
+        public_id = post.url.split('/')[-1].split('.')[0]
+        cloudinary.uploader.destroy(public_id)
+
+        if post.qr_code:
+            qr_public_id = post.qr_code.split('/')[-1].split('.')[0]
+            cloudinary.uploader.destroy(qr_public_id)
+
+        await db.delete(post)
+        await db.commit()
+
+        return {"message": "Picture and post deleted successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
