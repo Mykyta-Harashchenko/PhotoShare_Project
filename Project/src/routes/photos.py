@@ -112,6 +112,21 @@ async def upload_file(description: str,
 
 @router.get("/post/{post_id}", response_model=PostResponseSchema)
 async def get_post(post_id: int, db: AsyncSession = Depends(get_db)) -> PostResponseSchema:
+    """
+    Retrieves a post by its ID, including its description, tags, and associated comments.
+    
+    This endpoint fetches a post from the database by its ID and returns the post details, including the file URL, description,
+    tags, and any associated comments.
+    
+    :param post_id: The ID of the post to retrieve.
+    :type post_id: int
+    :param db: The database session to use for database operations.
+    :type db: AsyncSession
+    :return: A dictionary containing the post information, including the file URL, description, tags, and comments.
+    :rtype: PostResponseSchema
+    :raises HTTPException: If the post with the given ID is not found, an HTTPException with status 404 is raised.
+                           If there is any other error, an HTTPException with status 500 is raised.
+    """
     try:
         query = select(Post).options(joinedload(Post.tags), joinedload(Post.comments)).where(Post.id == post_id)
         result = await db.execute(query)
@@ -148,6 +163,26 @@ async def update_description(
         db: AsyncSession = Depends(get_db),
         current_user: User = Depends(get_current_user)
 ):
+    """
+    Updates the description of a specific post by its ID.
+    
+    This endpoint allows the owner, an admin, or a moderator to update the description of a post. It checks the post ownership
+    and user role before updating the description.
+    
+    :param post_id: The ID of the post to update.
+    :type post_id: int
+    :param new_description: The new description to set for the post.
+    :type new_description: str
+    :param db: The database session to use for database operations.
+    :type db: AsyncSession
+    :param current_user: The currently authenticated user making the request.
+    :type current_user: User
+    :return: The updated post data.
+    :rtype: PostCreate
+    :raises HTTPException: If the post with the given ID is not found, an HTTPException with status 404 is raised.
+                           If the user is not authorized to update the post, a 403 HTTPException is raised.
+                           If there is any other error, an HTTPException with status 500 is raised.
+    """
     try:
 
         query = select(Post).where(Post.id == post_id).options(selectinload(Post.tags))
@@ -182,6 +217,24 @@ async def delete_picture(
         db: AsyncSession = Depends(get_db),
         current_user: User = Depends(get_current_user)
 ):
+    """
+    Deletes a picture and its associated post by its ID.
+    
+    This endpoint allows the post owner or an admin to delete a picture and its post from the database. It also deletes the
+    associated file from Cloudinary.
+    
+    :param post_id: The ID of the post to delete.
+    :type post_id: int
+    :param db: The database session to use for database operations.
+    :type db: AsyncSession
+    :param current_user: The currently authenticated user making the request.
+    :type current_user: User
+    :return: A message indicating the successful deletion of the post and picture.
+    :rtype: dict
+    :raises HTTPException: If the post with the given ID is not found, an HTTPException with status 404 is raised.
+                           If the user is not authorized to delete the post, a 403 HTTPException is raised.
+                           If there is any other error, an HTTPException with status 500 is raised.
+    """
     try:
         query = select(Post).where(Post.id == post_id)
         result = await db.execute(query)
@@ -316,21 +369,25 @@ async def crop_image(
     It then generates a QR code for the cropped image URL and uploads both the cropped image and the QR code to Cloudinary.
     A new post is created in the database with the cropped image URL and the QR code URL.
 
-    Parameters:
-    - post_id (int): The ID of the post containing the image to be cropped.
-    - width (int): The width for the cropped image.
-    - height (int): The height for the cropped image.
-    - x (int): The x-coordinate for the cropping starting point.
-    - y (int): The y-coordinate for the cropping starting point.
-    - db (AsyncSession): The database session for executing queries.
-    - current_user (User): The currently authenticated user making the request.
+    :param post_id: The ID of the post containing the image to be cropped.
+    :type post_id: int
+    :param width: The width for the cropped image.
+    :type width: int
+    :param height: The height for the cropped image.
+    :type height: int
+    :param x: The x-coordinate for the cropping starting point.
+    :type x: int
+    :param y: The y-coordinate for the cropping starting point.
+    :type y: int
+    :param db: The database session for executing queries.
+    :type db: AsyncSession
+    :param current_user: The currently authenticated user making the request.
+    :type current_user: User
 
-    Returns:
-    - dict: A dictionary containing the URLs of the cropped image and its QR code.
-
-    Raises:
-    - HTTPException: If the post is not found, returns a 404 error.
-    - HTTPException: If an error occurs during the processing, returns a 500 error.
+    :return: A dictionary containing the URLs of the cropped image and its QR code.
+    :rtype: dict
+    :raises HTTPException: If the post is not found, returns a 404 error.
+    :raises HTTPException: If an error occurs during the processing, returns a 500 error.
     """
     try:
         query = select(Post).where(Post.id == post_id)
@@ -381,18 +438,19 @@ async def rotate_image(
     It then generates a QR code for the rotated image URL and uploads both the rotated image and the QR code to Cloudinary.
     A new post is created in the database with the rotated image URL and the QR code URL.
 
-    Parameters:
-    - post_id (int): The ID of the post containing the image to be rotated.
-    - angle (int): The angle in degrees to rotate the image.
-    - db (AsyncSession): The database session for executing queries.
-    - current_user (User): The currently authenticated user making the request.
+    :param post_id: The ID of the post containing the image to be rotated.
+    :type post_id: int
+    :param angle: The angle in degrees to rotate the image.
+    :type angle: int
+    :param db: The database session for executing queries.
+    :type db: AsyncSession
+    :param current_user: The currently authenticated user making the request.
+    :type current_user: User
 
-    Returns:
-    - dict: A dictionary containing the URLs of the rotated image and its QR code.
-
-    Raises:
-    - HTTPException: If the post is not found, returns a 404 error.
-    - HTTPException: If an error occurs during the processing, returns a 500 error.
+    :return: A dictionary containing the URLs of the rotated image and its QR code.
+    :rtype: dict
+    :raises HTTPException: If the post is not found, returns a 404 error.
+    :raises HTTPException: If an error occurs during the processing, returns a 500 error.
     """
     try:
         query = select(Post).where(Post.id == post_id)
@@ -443,18 +501,19 @@ async def apply_effect(
     It then generates a QR code for the modified image URL and uploads both the modified image and the QR code to Cloudinary.
     A new post is created in the database with the modified image URL and the QR code URL.
 
-    Parameters:
-    - post_id (int): The ID of the post containing the image to which the effect will be applied.
-    - effect (str): The effect to apply to the image (e.g., "sepia", "grayscale", "blur:300").
-    - db (AsyncSession): The database session for executing queries.
-    - current_user (User): The currently authenticated user making the request.
+    :param post_id: The ID of the post containing the image to which the effect will be applied.
+    :type post_id: int
+    :param effect: The effect to apply to the image (e.g., "sepia", "grayscale", "blur:300").
+    :type effect: str
+    :param db: The database session for executing queries.
+    :type db: AsyncSession
+    :param current_user: The currently authenticated user making the request.
+    :type current_user: User
 
-    Returns:
-    - dict: A dictionary containing the URLs of the modified image and its QR code.
-
-    Raises:
-    - HTTPException: If the post is not found, returns a 404 error.
-    - HTTPException: If an error occurs during the processing, returns a 500 error.
+    :return: A dictionary containing the URLs of the modified image and its QR code.
+    :rtype: dict
+    :raises HTTPException: If the post is not found, returns a 404 error.
+    :raises HTTPException: If an error occurs during the processing, returns a 500 error.
     """
     try:
         query = select(Post).where(Post.id == post_id)
