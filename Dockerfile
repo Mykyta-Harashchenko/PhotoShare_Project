@@ -10,10 +10,8 @@ COPY . .
 RUN apt-get update && \
     apt-get install -y redis-server
 
-COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-
 EXPOSE 8000
 
 #CMD ["uvicorn", "Project.src.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
-CMD ["/usr/bin/supervisord"]
+CMD redis-server --bind 127.0.0.1 & uvicorn Project.src.main:app --host 0.0.0.0 --port 8000
