@@ -21,6 +21,7 @@ from Project.src.services.roles import RoleChecker
 from Project.src.services.dependencies import get_current_user
 
 
+
 router = APIRouter(tags=['photos'])
 
 cloudinary.config(
@@ -103,7 +104,7 @@ async def upload_file(description: str,
 
         return {
                 "url": secure_url,
-                "qr_url": qr_secure_url,
+                "qr_code": qr_secure_url,
                 "description": db_file.description,
                  "owner_id": db_file.owner_id
                 }
@@ -124,7 +125,7 @@ async def get_post(post_id: int, db: AsyncSession = Depends(get_db)) -> PostResp
             id=post.id,
             file_url=post.url,
             description=post.description,
-            tags=[tag.name for tag in post.tags],
+            tags=[tag.tag for tag in post.tags],
             comments=[
                 CommentResponse(
                     id=comment.id,
@@ -167,7 +168,7 @@ async def update_description(
         return PostCreate(
             url=post.url,
             description=post.description,
-            tags=[tag.name for tag in post.tags],
+            tags=[tag.tag for tag in post.tags],
             qr_code=post.qr_code,
             owner_id=post.owner_id
         )

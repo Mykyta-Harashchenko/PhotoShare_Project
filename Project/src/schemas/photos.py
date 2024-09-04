@@ -2,11 +2,12 @@ from pydantic import BaseModel, constr
 from typing import List, Optional
 
 from pydantic.v1 import validator
+from Project.src.schemas.comments import CommentResponse
 
 
 class PostCreate(BaseModel):
     url: str
-    qr_url: str
+    qr_code: str
     description: str
     owner_id: int
     tags: Optional[List[constr(min_length=1, max_length=50)]] = []
