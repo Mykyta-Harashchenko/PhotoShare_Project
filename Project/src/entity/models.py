@@ -17,6 +17,7 @@ class Role(enum.Enum):
     - moderator (str): The moderator role, allowing limited management permissions.
     - user (str): The basic user role, providing standard access.
     """
+
     admin: str = "admin"
     moderator: str = "moderator"
     user: str = "user"
@@ -48,6 +49,7 @@ class User(Base):
     - posts (list[Post]): A list of posts created by the user.
     - comments (list[Comment]): A list of comments made by the user.
     """
+    __tablename__ = 'users'
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     username: Mapped[str] = mapped_column(String(50))
     email: Mapped[str] = mapped_column(String(150), nullable=False, unique=True)
@@ -78,6 +80,7 @@ class Tag(Base):
     - id (int): The unique identifier for the tag.
     - tag (str): The name of the tag (must be unique).
     """
+    __tablename__ = 'tags'
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     tag: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
 
@@ -99,6 +102,7 @@ class Post(Base):
     - tags (list[Tag]): A list of tags associated with the post.
     - comments (list[Comment]): A list of comments made on the post.
     """
+    __tablename__ = 'posts'
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     url: Mapped[str] = mapped_column(Text, nullable=True)
     qr_code: Mapped[str] = mapped_column(Text, nullable=True)
@@ -126,6 +130,7 @@ class Comment(Base):
     - post_id (int): The ID of the post the comment is associated with.
     - post (Post): The post the comment is associated with.
     """
+    __tablename__ = 'comments'
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     text: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[DateTime] = mapped_column(DateTime, default=func.now())
@@ -146,5 +151,6 @@ class PostTag(Base):
     - post_id (int): The ID of the post.
     - tag_id (int): The ID of the tag.
     """
+    __tablename__ = 'post_tags'
     post_id: Mapped[int] = mapped_column(Integer, ForeignKey('posts.id'), primary_key=True)
     tag_id: Mapped[int] = mapped_column(Integer, ForeignKey('tags.id'), primary_key=True)
