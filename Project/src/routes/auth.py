@@ -1,20 +1,20 @@
 from fastapi import APIRouter, HTTPException, Depends, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Session, joinedload
-from datetime import timedelta
+from sqlalchemy.orm import joinedload
 from sqlalchemy.future import select
 
 from Project.src.database.db import get_db
-from Project.src.schemas.user import UserCreate, UserResponse, Token, UserUpdate, UserSignin, UserSignup
-from Project.src.services.auth_service import get_password_hash, verify_password, create_access_token, admin_required, \
+from Project.src.schemas.user import UserResponse, UserSignin, UserSignup
+from Project.src.services.auth_service import admin_required, \
     moderate_required, signout, signin, signup
 from Project.src.entity.models import User, Role
 from Project.src.services.dependencies import get_current_user
 
 router = APIRouter(tags=['auth'])
 
-@router.post("/signup")
+@router.post("/signup",
+             status_code=status.HTTP_201_CREATED)
 async def register(user: UserSignup, db: AsyncSession = Depends(get_db)):
     """
     Registers a new user in the system.
@@ -31,7 +31,8 @@ async def register(user: UserSignup, db: AsyncSession = Depends(get_db)):
     """
     return await signup(user, db)
 
-@router.post("/signin")
+@router.post("/signin",
+             status_code=status.HTTP_201_CREATED)
 async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
     """
         Logs in a user and generates access and refresh tokens.
@@ -49,7 +50,8 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSessi
     user_signin = UserSignin(email=form_data.username, password=form_data.password)
     return await signin(user_signin, db)
 
-@router.post("/signout")
+@router.post("/signout",
+             status_code=status.HTTP_201_CREATED)
 async def logout(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """
     Logs out the currently authenticated user.
@@ -66,7 +68,9 @@ async def logout(current_user: User = Depends(get_current_user), db: AsyncSessio
     return await signout(current_user, db)
 
 
-@router.patch("/users/{user_id}/promote", response_model=UserResponse)
+@router.patch("/users/{user_id}/promote",
+              response_model=UserResponse,
+              status_code=status.HTTP_200_OK)
 async def promote_to_moderator(user_id: int, db: AsyncSession = Depends(get_db),
                                current_user: User = Depends(admin_required)):
     """
@@ -96,7 +100,8 @@ async def promote_to_moderator(user_id: int, db: AsyncSession = Depends(get_db),
 
     return user
 
-@router.get("/users/me")
+@router.get("/users/me",
+            status_code=status.HTTP_200_OK)
 async def read_users_me(current_user: User = Depends(get_current_user)):
     return current_user
 
@@ -162,7 +167,9 @@ async def get_user_info(user_id: int = None, email: str = None, username: str = 
     }
 
 
-@router.patch("/users/{user_id}/block", response_model=UserResponse)
+@router.patch("/users/{user_id}/block",
+              response_model=UserResponse,
+              status_code=status.HTTP_200_OK)
 async def block_user(user_id: int, block: bool, db: AsyncSession = Depends(get_db),
                      current_user: User = Depends(admin_required)):
     """
