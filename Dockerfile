@@ -1,29 +1,17 @@
-# Вказуємо базовий образ Python
-FROM python:3.10.10-slim
+FROM python:3.11-slim
 
-# Встановлюємо залежності системи, необхідні для роботи Python та Poetry
-RUN apt-get update && apt-get install -y curl build-essential
-
-# Встановлюємо Poetry
-RUN curl -sSL https://install.python-poetry.org | python3 -
-
-# Додаємо Poetry у PATH
-ENV PATH="/root/.local/bin:$PATH"
-
-# Встановлюємо робочу директорію всередині контейнера
 WORKDIR /app
 
-# Копіюємо файли з вашого проєкту в контейнер
-COPY pyproject.toml poetry.lock ./
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Встановлюємо залежності через Poetry
-RUN poetry install --no-root
+COPY . .
 
-# Копіюємо весь проєкт у контейнер
-COPY Project .
+RUN apt-get update && \
+    apt-get install -y redis-server
 
-# Копіюємо .env файл в контейнер
-COPY .env /app/.env
+EXPOSE 8000
 
-# Вказуємо команду для запуску сервісу
-CMD ["poetry", "run", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
+#CMD ["uvicorn", "Project.src.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+CMD redis-server --bind 127.0.0.1 & uvicorn Project.src.main:app --host 0.0.0.0 --port 8000

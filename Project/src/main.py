@@ -12,11 +12,12 @@ from fastapi_limiter.depends import RateLimiter
 from fastapi_limiter import FastAPILimiter
 import redis.asyncio as redis
 from sqlalchemy import text
+from Project.src.conf.config import config
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    redis_connection = redis.from_url("redis://localhost:6379", encoding="utf8")
+    redis_connection = redis.from_url(config.REDIS_URL, encoding="utf8")
     await FastAPILimiter.init(redis_connection)
     yield
     await FastAPILimiter.close()
@@ -57,4 +58,3 @@ async def healthchecker(db: AsyncSession = Depends(get_db)):
 # @app.get("/users/me")
 # async def read_users_me(current_user: User = Depends(get_current_user)):
 #     return current_user
-
