@@ -101,7 +101,7 @@ async def upload_file(description: str,
         await db.commit()
         await db.refresh(db_file)
 
-        return {"url": secure_url, "qr_url": qr_secure_url}
+        return {"url": secure_url, "qr_url": qr_secure_url, 'description': db_file.description, 'owner_id': current_user.id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -162,7 +162,7 @@ async def update_description(
         return PostCreate(
             url=post.url,
             description=post.description,
-            tags=[tag.name for tag in post.tags],
+            tags=[tag.tag for tag in post.tags],
             qr_code=post.qr_code,
             owner_id=post.owner_id
         )

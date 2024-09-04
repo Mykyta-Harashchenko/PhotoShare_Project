@@ -6,7 +6,7 @@ from pydantic.v1 import validator
 
 class PostCreate(BaseModel):
     url: str
-    qr_url: str
+    qr_code: str
     description: str
     owner_id: int
     tags: Optional[List[constr(min_length=1, max_length=50)]] = []
