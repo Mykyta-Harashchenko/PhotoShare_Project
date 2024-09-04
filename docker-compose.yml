@@ -1,21 +1,18 @@
-version: '3.1'
+version: '3.8'
 
 services:
-  postgres:
-    image: postgres:latest
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: FastAPI
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: my_fastapi_app
     ports:
-      - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
+      - "8000:8000"
+    depends_on:
+      - redis
 
   redis:
     image: redis:latest
+    container_name: redis_cache
     ports:
       - "6379:6379"
-
-volumes:
-  pgdata:
