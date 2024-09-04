@@ -1,9 +1,11 @@
 services:
+
   api:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: my_fastapi_app
+
     ports:
       - "8000:8000"
     depends_on:

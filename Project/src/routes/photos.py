@@ -1,5 +1,5 @@
 import os
-
+from fastapi import status
 import qrcode
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
@@ -32,7 +32,8 @@ cloudinary.config(
 
 @router.post("/upload/",
              dependencies=[Depends(RoleChecker([Role.user, Role.admin, Role.moderator]))],
-             response_model=PostCreate)
+             response_model=PostCreate,
+             status_code=status.HTTP_201_CREATED)
 async def upload_file(description: str,
                       file: UploadFile = File(...),
                       tags: Optional[List[str]] = Query([]),
@@ -111,14 +112,16 @@ async def upload_file(description: str,
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/post/{post_id}", response_model=PostResponseSchema)
+@router.get("/post/{post_id}",
+            response_model=PostResponseSchema,
+            status_code=status.HTTP_200_OK)
 async def get_post(post_id: int, db: AsyncSession = Depends(get_db)) -> PostResponseSchema:
     """
     Retrieves a post by its ID, including its description, tags, and associated comments.
-    
+
     This endpoint fetches a post from the database by its ID and returns the post details, including the file URL, description,
     tags, and any associated comments.
-    
+
     :param post_id: The ID of the post to retrieve.
     :type post_id: int
     :param db: The database session to use for database operations.
@@ -157,7 +160,9 @@ async def get_post(post_id: int, db: AsyncSession = Depends(get_db)) -> PostResp
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.patch("/update_description/{post_id}", response_model=PostCreate)
+@router.patch("/update_description/{post_id}",
+              response_model=PostCreate,
+              status_code=status.HTTP_200_OK)
 async def update_description(
         post_id: int,
         new_description: str,
@@ -166,10 +171,10 @@ async def update_description(
 ):
     """
     Updates the description of a specific post by its ID.
-    
+
     This endpoint allows the owner, an admin, or a moderator to update the description of a post. It checks the post ownership
     and user role before updating the description.
-    
+
     :param post_id: The ID of the post to update.
     :type post_id: int
     :param new_description: The new description to set for the post.
@@ -212,7 +217,9 @@ async def update_description(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.delete("/delete_picture/{post_id}")
+@router.delete("/delete_picture/{post_id}",
+               response_model=List[CommentResponse],
+               status_code=status.HTTP_410_GONE)
 async def delete_picture(
         post_id: int,
         db: AsyncSession = Depends(get_db),
@@ -220,10 +227,10 @@ async def delete_picture(
 ):
     """
     Deletes a picture and its associated post by its ID.
-    
+
     This endpoint allows the post owner or an admin to delete a picture and its post from the database. It also deletes the
     associated file from Cloudinary.
-    
+
     :param post_id: The ID of the post to delete.
     :type post_id: int
     :param db: The database session to use for database operations.
@@ -261,7 +268,9 @@ async def delete_picture(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/get_qr_code/{post_id}")
+@router.get("/get_qr_code/{post_id}",
+            response_model=List[CommentResponse],
+            status_code=status.HTTP_200_OK)
 async def get_qr_code(post_id: int, db: AsyncSession = Depends(get_db)) -> dict:
     """
     Retrieves the QR code URL for a specific post by its ID.
@@ -289,7 +298,9 @@ async def get_qr_code(post_id: int, db: AsyncSession = Depends(get_db)) -> dict:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/resize_image/{post_id}")
+@router.post("/resize_image/{post_id}",
+             response_model=PostCreate,
+             status_code=status.HTTP_201_CREATED)
 async def resize_image(
     post_id: int,
     width: int,
@@ -353,7 +364,9 @@ async def resize_image(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/crop_image/{post_id}")
+@router.post("/crop_image/{post_id}",
+            response_model=PostCreate,
+            status_code=status.HTTP_201_CREATED)
 async def crop_image(
     post_id: int,
     width: int,
@@ -425,7 +438,9 @@ async def crop_image(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/rotate_image/{post_id}")
+@router.post("/rotate_image/{post_id}",
+             response_model=PostCreate,
+             status_code=status.HTTP_201_CREATED)
 async def rotate_image(
     post_id: int,
     angle: int,
@@ -488,7 +503,9 @@ async def rotate_image(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/apply_effect/{post_id}")
+@router.post("/apply_effect/{post_id}",
+             response_model=PostCreate,
+             status_code=status.HTTP_201_CREATED)
 async def apply_effect(
     post_id: int,
     effect: str,

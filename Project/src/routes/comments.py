@@ -15,7 +15,8 @@ router = APIRouter(tags=['comments'])
 @router.post(
     "/posts/{post_id}/comments/",
     response_model=CommentResponse,
-    dependencies=[Depends(RoleChecker([Role.user, Role.admin, Role.moderator]))]
+    dependencies=[Depends(RoleChecker([Role.user, Role.admin, Role.moderator]))],
+    status_code=status.HTTP_201_CREATED
 )
 async def create_comment(
         post_id: int,
@@ -52,7 +53,8 @@ async def create_comment(
 @router.put(
     "/comments/{comment_id}/",
     response_model=CommentResponse,
-    dependencies=[Depends(RoleChecker([Role.user, Role.admin, Role.moderator]))]
+    dependencies=[Depends(RoleChecker([Role.user, Role.admin, Role.moderator]))],
+    status_code=status.HTTP_200_OK
 )
 async def update_comment(
         comment_id: int,
@@ -126,7 +128,8 @@ async def delete_comment(
 
 @router.get(
     "/posts/{post_id}/comments/",
-    response_model=List[CommentResponse]
+    response_model=List[CommentResponse],
+    status_code=status.HTTP_200_OK
 )
 async def get_comments_by_post(
         post_id: int,
@@ -162,7 +165,8 @@ async def get_comments_by_post(
 
 @router.get(
     "/users/{user_id}/comments/",
-    response_model=List[CommentResponse]
+    response_model=List[CommentResponse],
+    status_code=status.HTTP_200_OK
 )
 async def get_comments_by_user(
         user_id: int,
