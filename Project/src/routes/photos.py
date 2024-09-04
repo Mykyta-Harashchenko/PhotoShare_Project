@@ -98,7 +98,12 @@ async def upload_file(description: str,
         await db.commit()
         await db.refresh(db_file)
 
-        return {"url": secure_url, "qr_url": qr_secure_url}
+        return {
+                "url": secure_url,
+                "qr_url": qr_secure_url,
+                "description": db_file.description,
+                 "owner_id": db_file.owner_id
+                }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
