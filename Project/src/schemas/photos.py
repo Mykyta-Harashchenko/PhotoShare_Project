@@ -27,6 +27,7 @@ class PostResponseSchema(BaseModel):
     description: str
     file_url: str
     tags: list[str]
+    comments: List[CommentResponse]
 
     class Config:
         from_attributes = True
