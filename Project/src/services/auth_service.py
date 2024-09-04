@@ -220,19 +220,27 @@ async def admin_required(current_user: User = Depends(get_current_user)):
         )
     return current_user
 
-async def admin_required(current_user: User = Depends(get_current_user)):
+async def moderate_required(current_user: User = Depends(get_current_user)):
     """
-    Check if the current user has admin privileges.
+    Check if the current user has admin or moderator privileges.
 
-    This function ensures that the current user has the "admin" role.
+    This function ensures that the current user has either the "admin" or "moderator" role.
+    It is intended to be used as a dependency to restrict access to certain routes.
 
     :param current_user: The currently authenticated user.
     :type current_user: User
-    :return: The current user if they have admin privileges.
+    :return: The current user if they have admin or moderator privileges.
     :rtype: User
-    :raises HTTPException: If the user is not an admin.
+    :raises HTTPException: If the user is neither an admin nor a moderator, an HTTP 403 error is raised.
+
+    Example:
+    ```
+    @router.get("/moderator-only", dependencies=[Depends(moderate_required)])
+    async def moderator_only_route():
+        return {"message": "You have moderator privileges!"}
+    ```
     """
-    if current_user.role != Role.admin:
+    if current_user.role not in [Role.admin, Role.moderator]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You do not have the necessary permissions to access this resource."
